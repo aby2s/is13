@@ -5,10 +5,10 @@ import subprocess
 import os
 import random
 
-from is13.data import load
-from is13.rnn.elman import model
-from is13.metrics.accuracy import conlleval
-from is13.utils.tools import shuffle, minibatch, contextwin
+from data import load
+from rnn.elman import model
+from metrics.accuracy import conlleval
+from utils.tools import shuffle, minibatch, contextwin
 
 from keras.models import Sequential
 from keras.layers import (Input, Embedding, SimpleRNN, Dense, Activation,
@@ -31,8 +31,8 @@ if __name__ == '__main__':
 
     # load the dataset
     train_set, valid_set, test_set, dic = load.atisfold(s['fold'])
-    idx2label = dict((k,v) for v,k in dic['labels2idx'].iteritems())
-    idx2word  = dict((k,v) for v,k in dic['words2idx'].iteritems())
+    idx2label = dict((k,v) for v,k in dic['labels2idx'].items())
+    idx2word  = dict((k,v) for v,k in dic['words2idx'].items())
 
     train_lex, train_ne, train_y = train_set
     valid_lex, valid_ne, valid_y = valid_set
@@ -59,12 +59,12 @@ if __name__ == '__main__':
 
     # train with early stopping on validation set
     best_f1 = -np.inf
-    for e in xrange(s['nepochs']):
+    for e in range(s['nepochs']):
         # shuffle
         shuffle([train_lex, train_ne, train_y], s['seed'])
         s['ce'] = e
         tic = time.time()
-        for i in xrange(nsentences):
+        for i in range(nsentences):
             X = np.asarray([train_lex[i]])
             Y = to_categorical(np.asarray(train_y[i])[:, np.newaxis],
                                           nclasses)[np.newaxis, :, :]
@@ -73,8 +73,7 @@ if __name__ == '__main__':
             model.train_on_batch(X, Y)
 
             if s['verbose']:
-                print '[learning] epoch %i >> %2.2f%%'%(e,(i+1)*100./nsentences),'completed in %.2f (sec) <<\r'%(time.time()-tic),
-                sys.stdout.flush()
+                print('[learning] epoch {} >> {:2.2f}, completed in {:.2f} (sec) '.format(e,(i+1)*100./nsentences, time.time()-tic))
 
         # evaluation // back into the real world : idx -> words
         predictions_test = [map(lambda x: idx2label[x], \
@@ -99,14 +98,14 @@ if __name__ == '__main__':
             model.save_weights('best_model.h5', overwrite=True)
             best_f1 = res_valid['f1']
             if s['verbose']:
-                print 'NEW BEST: epoch', e, 'valid F1', res_valid['f1'], 'best test F1', res_test['f1'], ' '*20
+                print('NEW BEST: epoch {}, valid F1 {}, best test F1 {}'.format(e, res_valid['f1'], res_test['f1']))
             s['vf1'], s['vp'], s['vr'] = res_valid['f1'], res_valid['p'], res_valid['r']
             s['tf1'], s['tp'], s['tr'] = res_test['f1'],  res_test['p'],  res_test['r']
             s['be'] = e
             subprocess.call(['mv', folder + '/current.test.txt', folder + '/best.test.txt'])
             subprocess.call(['mv', folder + '/current.valid.txt', folder + '/best.valid.txt'])
         else:
-            print ''
+            print('')
 
-    print 'BEST RESULT: epoch', e, 'valid F1', s['vf1'], 'best test F1', s['tf1'], 'with the model', folder
+    print('BEST RESULT: epoch {}, valid F1 {}, best test F1 {}, with the model {}'.format(e, s['vf1'], s['tf1'], folder))
 

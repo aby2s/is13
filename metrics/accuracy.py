@@ -1,13 +1,13 @@
 import numpy
 import pdb
-import cPickle
+import _pickle
 import random
 import os
 import stat
 import subprocess
 from os.path import isfile, join
 from os import chmod
-from is13.data.load import download
+from data.load import download
 
 PREFIX = os.getenv('ATISDATA', '')
 
@@ -31,10 +31,9 @@ def conlleval(p, g, w, filename):
             out += w + ' ' + wl + ' ' + wp + '\n'
         out += 'EOS O O\n\n'
 
-    f = open(filename,'w')
-    f.writelines(out)
-    f.close()
-    
+    with open(filename,'w') as f:
+        f.writelines(out)
+
     return get_perf(filename)
 
 def get_perf(filename):
@@ -47,8 +46,8 @@ def get_perf(filename):
         chmod('conlleval.pl', stat.S_IRWXU) # give the execute permissions
 
     proc = subprocess.Popen(["perl", _conlleval], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    stdout, _ = proc.communicate(open(filename).read())
-    for line in stdout.split('\n'):
+    stdout, _ = proc.communicate(open(filename, 'rb').read())
+    for line in stdout.decode("utf-8").split('\n'):
         if 'accuracy' in line:
             out = line.split()
             break
@@ -76,7 +75,7 @@ def get_perfo(filename):
         cmd = PREFIX + 'conlleval.pl < %s | grep accuracy > %s'%(filename,tempfile)
     else:
         cmd = './conlleval.pl < %s | grep accuracy > %s'%(filename,tempfile)
-    print cmd
+    print(cmd)
     out = os.system(cmd)
     out = open(tempfile).readlines()[0].split()
     os.system('rm %s'%tempfile)
@@ -87,4 +86,4 @@ def get_perfo(filename):
 
 if __name__ == '__main__':
     #print get_perf('valid.txt')
-    print get_perf('valid.txt')
+    print(get_perf('valid.txt'))

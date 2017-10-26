@@ -1,3 +1,5 @@
+from functools import reduce
+
 import numpy
 import time
 import sys
@@ -5,10 +7,10 @@ import subprocess
 import os
 import random
 
-from is13.data import load
-from is13.rnn.jordan import model
-from is13.metrics.accuracy import conlleval
-from is13.utils.tools import shuffle, minibatch, contextwin
+from data import load
+from rnn.jordan import model
+from metrics.accuracy import conlleval
+from utils.tools import shuffle, minibatch, contextwin
 
 if __name__ == '__main__':
 
@@ -28,8 +30,8 @@ if __name__ == '__main__':
 
     # load the dataset
     train_set, valid_set, test_set, dic = load.atisfold(s['fold'])
-    idx2label = dict((k,v) for v,k in dic['labels2idx'].iteritems())
-    idx2word  = dict((k,v) for v,k in dic['words2idx'].iteritems())
+    idx2label = dict((k,v) for v,k in dic['labels2idx'].items())
+    idx2word  = dict((k,v) for v,k in dic['words2idx'].items())
 
     train_lex, train_ne, train_y = train_set
     valid_lex, valid_ne, valid_y = valid_set
@@ -57,12 +59,12 @@ if __name__ == '__main__':
     # train with early stopping on validation set
     best_f1 = -numpy.inf
     s['clr'] = s['lr']
-    for e in xrange(s['nepochs']):
+    for e in range(s['nepochs']):
         # shuffle
         shuffle([train_lex, train_ne, train_y], s['seed'])
         s['ce'] = e
         tic = time.time()
-        for i in xrange(nsentences):
+        for i in range(nsentences):
             cwords = contextwin(train_lex[i], s['win'])
             words  = map(lambda x: numpy.asarray(x).astype('int32'),\
                          minibatch(cwords, s['bs']))
@@ -73,8 +75,8 @@ if __name__ == '__main__':
                 rnn.normalize()
 
             if s['verbose']:
-                print '[learning] epoch %i >> %2.2f%%'%(e,(i+1)*100./nsentences),'completed in %.2f (sec) <<\r'%(time.time()-tic),
-                sys.stdout.flush()
+                print('[learning] epoch {} >> {:2.2f}, completed in {:.2f} (sec) '.format(e,(i+1)*100./nsentences, time.time()-tic))
+
             
         # evaluation // back into the real world : idx -> words
         predictions_test = [ map(lambda x: idx2label[x], \
@@ -97,18 +99,18 @@ if __name__ == '__main__':
             rnn.save(folder)
             best_f1 = res_valid['f1']
             if s['verbose']:
-                print 'NEW BEST: epoch', e, 'valid F1', res_valid['f1'], 'best test F1', res_test['f1'], ' '*20
+                print('NEW BEST: epoch {}, valid F1 {}, best test F1 {}'.format(e, res_valid['f1'], res_test['f1']))
             s['vf1'], s['vp'], s['vr'] = res_valid['f1'], res_valid['p'], res_valid['r']
             s['tf1'], s['tp'], s['tr'] = res_test['f1'],  res_test['p'],  res_test['r']
             s['be'] = e
             subprocess.call(['mv', folder + '/current.test.txt', folder + '/best.test.txt'])
             subprocess.call(['mv', folder + '/current.valid.txt', folder + '/best.valid.txt'])
         else:
-            print ''
+            print('')
         
         # learning rate decay if no improvement in 10 epochs
         if s['decay'] and abs(s['be']-s['ce']) >= 10: s['clr'] *= 0.5 
         if s['clr'] < 1e-5: break
 
-    print 'BEST RESULT: epoch', e, 'valid F1', s['vf1'], 'best test F1', s['tf1'], 'with the model', folder
+    print('BEST RESULT: epoch {}, valid F1 {}, best test F1 {}, with the model {}'.format(e, s['vf1'], s['tf1'], folder))
 
